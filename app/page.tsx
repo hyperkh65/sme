@@ -1,115 +1,137 @@
 // app/search/page.tsx
-// 검색 페이지 v1 – 실서비스용 UI + API 연동 구조
+// 검색 페이지 디자인 v2 – A단계 (Mock 데이터, 광고/UX 완성)
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import Link from 'next/link'
 
-// ===== 타입 정의 =====
-interface SupportProgram {
-  id: string
-  title: string
-  agency: string
-  region: string
-  deadline: string
-  summary: string
-}
-
-// ===== 임시 API 엔드포인트 =====
-// 나중에 실제 API 주소로 교체
-const API_URL = '/api/programs'
+// ===== Mock 데이터 (A단계 전용) =====
+const MOCK_PROGRAMS = [
+  {
+    id: '1',
+    title: '소상공인 경영안정자금 지원사업',
+    agency: '중소벤처기업부',
+    region: '전국',
+    deadline: '상시',
+    summary: '경영에 어려움을 겪는 소상공인을 위한 저금리 정책자금 지원 사업입니다.',
+    status: '신청가능',
+  },
+  {
+    id: '2',
+    title: '청년 창업 초기자금 지원',
+    agency: '서울특별시',
+    region: '서울',
+    deadline: '2026-03-31',
+    summary: '만 39세 이하 청년 창업가를 대상으로 사업 초기 자금을 지원합니다.',
+    status: '신청가능',
+  },
+  {
+    id: '3',
+    title: '중소기업 스마트공장 구축 지원',
+    agency: '산업통상자원부',
+    region: '경기',
+    deadline: '2026-02-15',
+    summary: '제조 중소기업의 디지털 전환을 위한 스마트공장 구축 비용을 지원합니다.',
+    status: '신청가능',
+  },
+]
 
 export default function SearchPage() {
-  const [programs, setPrograms] = useState<SupportProgram[]>([])
-  const [loading, setLoading] = useState(true)
   const [region, setRegion] = useState('')
 
-  useEffect(() => {
-    async function fetchPrograms() {
-      setLoading(true)
-      try {
-        const res = await fetch(`${API_URL}?region=${region}`)
-        const data = await res.json()
-        setPrograms(data)
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchPrograms()
-  }, [region])
+  const filtered = MOCK_PROGRAMS.filter((p) =>
+    region ? p.region === region || p.region === '전국' : true,
+  )
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      {/* 헤더 */}
-      <section className="border-b bg-white">
+    <main className="min-h-screen bg-slate-100">
+      {/* 상단 헤더 */}
+      <header className="border-b bg-white">
         <div className="mx-auto max-w-7xl px-6 py-8">
           <h1 className="text-2xl font-bold">지원사업 검색</h1>
           <p className="mt-2 text-slate-600">
-            현재 신청 가능한 정부·지자체 지원사업만 보여드립니다.
+            지금 신청 가능한 정부·지자체 지원사업만 모았습니다.
           </p>
         </div>
-      </section>
+      </header>
 
-      {/* 필터 */}
-      <section className="mx-auto max-w-7xl px-6 py-6">
-        <div className="flex flex-wrap gap-4">
-          <select
-            className="rounded-lg border px-4 py-2"
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-          >
-            <option value="">전체 지역</option>
-            <option value="서울">서울</option>
-            <option value="경기">경기</option>
-            <option value="부산">부산</option>
-          </select>
-        </div>
-      </section>
+      <div className="mx-auto max-w-7xl px-6 py-10 grid gap-10 lg:grid-cols-4">
+        {/* 필터 영역 */}
+        <aside className="lg:col-span-1">
+          <div className="sticky top-24 rounded-2xl border bg-white p-6">
+            <h2 className="font-semibold">조건 필터</h2>
 
-      {/* 결과 리스트 */}
-      <section className="mx-auto max-w-7xl px-6 pb-20">
-        {loading ? (
-          <div className="py-20 text-center text-slate-500">불러오는 중...</div>
-        ) : programs.length === 0 ? (
-          <div className="py-20 text-center text-slate-500">
-            조건에 맞는 지원사업이 없습니다.
+            <div className="mt-6">
+              <label className="text-sm font-medium">지역</label>
+              <select
+                className="mt-2 w-full rounded-lg border px-3 py-2"
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+              >
+                <option value="">전체</option>
+                <option value="서울">서울</option>
+                <option value="경기">경기</option>
+              </select>
+            </div>
           </div>
-        ) : (
-          <div className="grid gap-6">
-            {programs.map((p) => (
+        </aside>
+
+        {/* 결과 리스트 */}
+        <section className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <span className="text-sm text-slate-500">
+              총 {filtered.length}건의 지원사업
+            </span>
+          </div>
+
+          <div className="space-y-6">
+            {filtered.map((p) => (
               <article
                 key={p.id}
-                className="rounded-xl border bg-white p-6 hover:shadow transition"
+                className="rounded-2xl border bg-white p-6 hover:shadow-md transition"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-semibold">{p.title}</h2>
+                    <h3 className="text-lg font-semibold">{p.title}</h3>
                     <p className="mt-1 text-sm text-slate-500">{p.agency}</p>
                   </div>
-                  <span className="rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700">
-                    {p.region}
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+                    {p.status}
                   </span>
                 </div>
 
                 <p className="mt-4 text-slate-700">{p.summary}</p>
 
-                <div className="mt-4 flex items-center justify-between text-sm">
-                  <span className="text-slate-500">마감일: {p.deadline}</span>
-                  <a
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-4 text-sm">
+                  <div className="flex gap-4 text-slate-500">
+                    <span>지역: {p.region}</span>
+                    <span>마감: {p.deadline}</span>
+                  </div>
+                  <Link
                     href={`/program/${p.id}`}
                     className="font-medium text-blue-600 hover:underline"
                   >
                     상세보기 →
-                  </a>
+                  </Link>
                 </div>
               </article>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+
+        {/* 광고 영역 */}
+        <aside className="hidden lg:block lg:col-span-1">
+          <div className="sticky top-24 space-y-6">
+            <div className="rounded-2xl border bg-white p-4">
+              <div className="mb-2 text-xs text-slate-400">ADVERTISEMENT</div>
+              <div className="flex h-[250px] items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                AdSense 300×250
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
     </main>
   )
 }
