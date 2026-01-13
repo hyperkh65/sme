@@ -17,72 +17,97 @@ function getStatus(endDate?: string): '신청가능' | '마감' {
 export async function GET(req: Request) {
   if (!SERVICE_KEY) {
     return NextResponse.json(
-      { error: 'DATA_GO_KR_SERVICE_KEY not set' },
-      { status: 500 }
+      { error: 'SERVICE_KEY missing' },
+      { status: 500 },
     )
   }
 
   const { searchParams } = new URL(req.url)
+
   const page = Number(searchParams.get('page') ?? 1)
-  const perPage = Number(searchParams.get('perPage') ?? 20)
-  const regionFilter = searchParams.get('region')
+  const perPage = Number(searchParams.get('perPage') ?? 10)
+  const region = searchParams.get('region')
+  const status = searchParams.get('status')
+  const keyword = searchParams.get('keyword')?.trim()
+  const sort = searchParams.get('sort') ?? 'deadline'
 
   try {
-    const url =
-      `${BASE_URL}?page=${page}&perPage=${perPage}` +
-      `&returnType=JSON&serviceKey=${SERVICE_KEY}`
-
-    const res = await fetch(url, {
-      cache: 'no-store',
-    })
-
-    if (!res.ok) {
-      const text = await res.text()
-      console.error('공공데이터 API 오류:', text)
-      return NextResponse.json(
-        { error: 'Public API error' },
-        { status: 502 }
-      )
-    }
+    /* 1️⃣ 공공 API에서 넉넉히 가져오기 */
+    const res = await fetch(
+      `${BASE_URL}?page=1&perPage=1000&returnType=JSON&serviceKey=${SERVICE_KEY}`,
+      { cache: 'no-store' },
+    )
 
     const json = await res.json()
 
-    const programs = (json.data ?? []).map((item: any) => {
+    let programs = (json.data ?? []).map((item: any) => {
       const region = extractRegion(item.사업명 ?? '')
+      const endDate = item.신청종료일자
+
       return {
         id: String(item.번호),
         title: item.사업명,
-        field: item.분야,
-        region,
         agency: item.소관기관,
-        executor: item.수행기관,
-        startDate: item.신청시작일자,
-        endDate: item.신청종료일자,
-        status: getStatus(item.신청종료일자),
-        url: item.상세URL,
+        region,
+        endDate,
+        status: getStatus(endDate),
         registeredAt: item.등록일자,
       }
     })
 
-    const filteredPrograms = regionFilter
-      ? programs.filter(
-          (p: any) =>
-            p.region === regionFilter || p.region === '전국'
-        )
-      : programs
+    /* 2️⃣ 검색 */
+    if (keyword) {
+      programs = programs.filter((p) =>
+        p.title.includes(keyword),
+      )
+    }
+
+    /* 3️⃣ 필터 */
+    if (region) {
+      programs = programs.filter(
+        (p) => p.region === region || p.region === '전국',
+      )
+    }
+
+    if (status) {
+      programs = programs.filter((p) => p.status === status)
+    }
+
+    /* 4️⃣ 정렬 */
+    if (sort === 'deadline') {
+      programs.sort(
+        (a, b) =>
+          new Date(a.endDate ?? '9999').getTime() -
+          new Date(b.endDate ?? '9999').getTime(),
+      )
+    }
+
+    if (sort === 'latest') {
+      programs.sort(
+        (a, b) =>
+          new Date(b.registeredAt ?? '').getTime() -
+          new Date(a.registeredAt ?? '').getTime(),
+      )
+    }
+
+    /* 5️⃣ 페이지네이션 */
+    const totalCount = programs.length
+    const totalPages = Math.ceil(totalCount / perPage)
+    const start = (page - 1) * perPage
+    const paginated = programs.slice(start, start + perPage)
 
     return NextResponse.json({
-      page: json.page,
-      perPage: json.perPage,
-      totalCount: json.totalCount,
-      currentCount: filteredPrograms.length,
-      programs: filteredPrograms,
+      page,
+      perPage,
+      totalPages,
+      totalCount,
+      programs: paginated,
     })
   } catch (e) {
     console.error(e)
     return NextResponse.json(
       { error: 'API fetch failed' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
