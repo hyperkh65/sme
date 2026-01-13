@@ -24,6 +24,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url)
 
+  const id = searchParams.get('id')               // ⭐ 핵심
   const page = Number(searchParams.get('page') ?? 1)
   const perPage = Number(searchParams.get('perPage') ?? 10)
   const region = searchParams.get('region')
@@ -38,6 +39,10 @@ export async function GET(req: Request) {
       { cache: 'no-store' },
     )
 
+    if (!res.ok) {
+      throw new Error('Public API error')
+    }
+
     const json = await res.json()
 
     let programs = (json.data ?? []).map((item: any) => {
@@ -49,20 +54,37 @@ export async function GET(req: Request) {
         title: item.사업명,
         agency: item.소관기관,
         region,
+        field: item.분야,
+        executor: item.수행기관,
+        startDate: item.신청시작일자,
         endDate,
         status: getStatus(endDate),
         registeredAt: item.등록일자,
+        url: item.상세URL,
       }
     })
 
-    /* 2️⃣ 검색 */
+    /* ===============================
+       ⭐ 2️⃣ id 단건 조회 (상세 페이지용)
+       =============================== */
+    if (id) {
+      const found = programs.find(
+        (p) => String(p.id) === String(id),
+      )
+
+      return NextResponse.json({
+        program: found ?? null,
+      })
+    }
+
+    /* 3️⃣ 검색 */
     if (keyword) {
       programs = programs.filter((p) =>
         p.title.includes(keyword),
       )
     }
 
-    /* 3️⃣ 필터 */
+    /* 4️⃣ 필터 */
     if (region) {
       programs = programs.filter(
         (p) => p.region === region || p.region === '전국',
@@ -73,7 +95,7 @@ export async function GET(req: Request) {
       programs = programs.filter((p) => p.status === status)
     }
 
-    /* 4️⃣ 정렬 */
+    /* 5️⃣ 정렬 */
     if (sort === 'deadline') {
       programs.sort(
         (a, b) =>
@@ -90,7 +112,7 @@ export async function GET(req: Request) {
       )
     }
 
-    /* 5️⃣ 페이지네이션 */
+    /* 6️⃣ 페이지네이션 */
     const totalCount = programs.length
     const totalPages = Math.ceil(totalCount / perPage)
     const start = (page - 1) * perPage
