@@ -21,35 +21,43 @@ type ProgramDetail = {
 function daysLeft(endDate?: string) {
   if (!endDate) return null
   const diff =
-    new Date(endDate).getTime() - new Date().setHours(0, 0, 0, 0)
+    new Date(endDate).getTime() -
+    new Date().setHours(0, 0, 0, 0)
   return Math.ceil(diff / 86400000)
 }
 
 export default function ProgramDetailPage() {
-  const { id } = useParams()
+  const { id } = useParams<{ id: string }>()
   const [program, setProgram] = useState<ProgramDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/programs?page=1`)
-      .then(res => res.json())
-      .then(data => {
-        const found = (data.programs || []).find(
-          (p: any) => String(p.id) === String(id),
-        )
-        setProgram(found || null)
+    if (!id) return
+
+    fetch(`/api/programs?id=${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setProgram(data.program ?? null)
+        setLoading(false)
+      })
+      .catch(() => {
+        setProgram(null)
         setLoading(false)
       })
   }, [id])
 
   if (loading) {
-    return <p className="py-40 text-center">불러오는 중…</p>
+    return (
+      <p className="py-40 text-center text-slate-500">
+        불러오는 중…
+      </p>
+    )
   }
 
   if (!program) {
     return (
       <p className="py-40 text-center text-slate-500">
-        해당 지원사업을 찾을 수 없습니다.
+        종료되었거나 존재하지 않는 지원사업입니다.
       </p>
     )
   }
@@ -107,6 +115,7 @@ export default function ProgramDetailPage() {
               <a
                 href={program.url}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-6 py-3 text-white font-semibold hover:bg-blue-700 transition"
               >
                 공고 원문 바로가기 →
