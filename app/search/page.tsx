@@ -1,248 +1,285 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
 
 type Program = {
   id: string
   title: string
-  agency: string
+  field: string
   region: string
+  agency: string
+  executor: string
+  startDate?: string
   endDate?: string
   status: '신청가능' | '마감'
+  url?: string
+  registeredAt?: string
 }
 
+/* ---------------- utils ---------------- */
+
+function daysLeft(endDate?: string) {
+  if (!endDate) return null
+  const diff =
+    new Date(endDate).getTime() - new Date().setHours(0, 0, 0, 0)
+  return Math.ceil(diff / 86400000)
+}
+
+function deadlineColor(d?: number | null) {
+  if (d === null) return 'bg-slate-100 text-slate-500'
+  if (d <= 1) return 'bg-red-100 text-red-700'
+  if (d <= 3) return 'bg-orange-100 text-orange-700'
+  if (d <= 7) return 'bg-yellow-100 text-yellow-700'
+  return 'bg-green-100 text-green-700'
+}
+
+/* ---------------- page ---------------- */
+
 export default function SearchPage() {
-  /* =======================
-     상태
-  ======================= */
+  const [programs, setPrograms] = useState<Program[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // filters
   const [page, setPage] = useState(1)
+  const [q, setQ] = useState('')
   const [region, setRegion] = useState('')
+  const [field, setField] = useState('')
   const [status, setStatus] = useState('')
-  const [keyword, setKeyword] = useState('')
   const [sort, setSort] = useState<'deadline' | 'latest'>('deadline')
 
-  /* =======================
-     데이터 로딩 (React Query)
-  ======================= */
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['programs', page, region, status, keyword, sort],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/programs?page=${page}&region=${region}&status=${status}&keyword=${keyword}&sort=${sort}`,
+  /* ---------- fetch ---------- */
+  useEffect(() => {
+    setLoading(true)
+    fetch(
+      `/api/programs?page=${page}&q=${q}&region=${region}&field=${field}&status=${status}`,
+    )
+      .then(res => res.json())
+      .then(data => {
+        setPrograms(data.programs || [])
+        setLoading(false)
+      })
+  }, [page, q, region, field, status])
+
+  /* ---------- sort ---------- */
+  const sortedPrograms = useMemo(() => {
+    const list = [...programs]
+    if (sort === 'deadline') {
+      return list.sort(
+        (a, b) =>
+          (daysLeft(a.endDate) ?? 9999) -
+          (daysLeft(b.endDate) ?? 9999),
       )
-      return res.json()
-    },
-    keepPreviousData: true,
-  })
+    }
+    return list.sort((a, b) =>
+      (b.registeredAt || '').localeCompare(a.registeredAt || ''),
+    )
+  }, [programs, sort])
 
-  const programs: Program[] = data?.programs ?? []
-  const totalPages: number = data?.totalPages ?? 1
+  const urgentTop5 = sortedPrograms
+    .filter(p => p.status === '신청가능')
+    .slice(0, 5)
 
-  /* =======================
-     UI
-  ======================= */
+  /* ---------------- UI ---------------- */
+
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="bg-slate-50 min-h-screen">
       {/* HEADER */}
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-7xl px-6 py-6">
-          <h1 className="text-2xl font-extrabold">
-            중소기업 지원사업 검색
+      <header className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <h1 className="text-2xl font-bold">
+            정부·지자체 지원사업 검색
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            검색 · 필터 · 페이지 이동까지 한 번에
+          <p className="mt-2 text-slate-600">
+            현재 신청 가능한 사업만 자동 선별합니다.
           </p>
+
+          <input
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="사업명 검색"
+            className="mt-4 w-full border rounded-lg px-4 py-3"
+          />
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl gap-8 px-6 py-10 lg:grid-cols-4">
+      <div className="max-w-7xl mx-auto px-6 py-10 grid lg:grid-cols-4 gap-8">
         {/* FILTER */}
-        <aside className="lg:col-span-1">
-          <div className="sticky top-24 space-y-5 rounded-xl border bg-white p-5">
-            <h3 className="text-sm font-semibold">필터</h3>
-
-            {/* 검색 */}
-            <input
-              placeholder="사업명 검색"
-              value={keyword}
-              onChange={(e) => {
-                setKeyword(e.target.value)
-                setPage(1)
-              }}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-            />
-
-            {/* 지역 */}
-            <select
-              value={region}
-              onChange={(e) => {
-                setRegion(e.target.value)
-                setPage(1)
-              }}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-            >
-              <option value="">전체 지역</option>
+        <aside className="space-y-6">
+          <Filter title="지역">
+            <Select value={region} onChange={setRegion}>
+              <option value="">전체</option>
               <option value="서울">서울</option>
               <option value="경기">경기</option>
               <option value="부산">부산</option>
               <option value="대구">대구</option>
-            </select>
+            </Select>
+          </Filter>
 
-            {/* 상태 */}
-            <select
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value)
-                setPage(1)
-              }}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-            >
-              <option value="">전체 상태</option>
+          <Filter title="분야">
+            <Select value={field} onChange={setField}>
+              <option value="">전체</option>
+              <option value="경영">경영</option>
+              <option value="기술">기술</option>
+              <option value="금융">금융</option>
+              <option value="수출">수출</option>
+            </Select>
+          </Filter>
+
+          <Filter title="상태">
+            <Select value={status} onChange={setStatus}>
+              <option value="">전체</option>
               <option value="신청가능">신청가능</option>
               <option value="마감">마감</option>
-            </select>
+            </Select>
+          </Filter>
 
-            {/* 정렬 */}
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as any)}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-            >
+          <Filter title="정렬">
+            <Select value={sort} onChange={v => setSort(v as any)}>
               <option value="deadline">마감임박순</option>
-              <option value="latest">최신순</option>
-            </select>
+              <option value="latest">최신등록순</option>
+            </Select>
+          </Filter>
 
-            <button
-              onClick={() => {
-                setRegion('')
-                setStatus('')
-                setKeyword('')
-                setPage(1)
-              }}
-              className="w-full rounded-lg border py-2 text-sm hover:bg-slate-50"
-            >
-              필터 초기화
-            </button>
+          {/* URGENT */}
+          <div className="bg-white border rounded-xl p-4">
+            <h3 className="font-semibold text-red-600 mb-3">
+              🔥 마감임박 TOP 5
+            </h3>
+            <div className="space-y-2">
+              {urgentTop5.map(p => {
+                const d = daysLeft(p.endDate)
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/program/${p.id}`}
+                    className="block text-sm"
+                  >
+                    <div className="font-medium line-clamp-2">
+                      {p.title}
+                    </div>
+                    {d !== null && (
+                      <span
+                        className={`inline-block mt-1 px-2 py-0.5 rounded text-xs ${deadlineColor(
+                          d,
+                        )}`}
+                      >
+                        D-{d}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
           </div>
         </aside>
 
         {/* LIST */}
-        <section className="lg:col-span-2 space-y-6">
-          {isFetching && (
-            <div className="text-xs text-slate-400">
-              결과 업데이트 중…
-            </div>
-          )}
+        <section className="lg:col-span-3 space-y-4">
+          {loading ? (
+            <p className="py-20 text-center">불러오는 중…</p>
+          ) : (
+            sortedPrograms.map(p => {
+              const d = daysLeft(p.endDate)
+              return (
+                <article
+                  key={p.id}
+                  className="bg-white border rounded-xl p-6 hover:shadow-md transition"
+                >
+                  <div className="flex justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold">
+                        {p.title}
+                      </h2>
+                      <p className="text-sm text-slate-500">
+                        {p.agency} · {p.executor}
+                      </p>
+                    </div>
 
-          {/* 로딩 */}
-          {isLoading && (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-24 animate-pulse rounded-xl bg-slate-200"
-                />
-              ))}
-            </div>
-          )}
-
-          {/* 결과 */}
-          {!isLoading &&
-            programs.map((p) => (
-              <article
-                key={p.id}
-                className="rounded-2xl border bg-white p-6 transition hover:shadow-md"
-              >
-                <div className="flex justify-between">
-                  <div>
-                    <h3 className="font-semibold">{p.title}</h3>
-                    <p className="text-sm text-slate-500">
-                      {p.agency}
-                    </p>
+                    <div className="text-right">
+                      <span
+                        className={`inline-block px-3 py-1 rounded text-sm font-semibold ${deadlineColor(
+                          d,
+                        )}`}
+                      >
+                        {p.status}
+                        {d !== null && ` · D-${d}`}
+                      </span>
+                    </div>
                   </div>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                    {p.status}
-                  </span>
-                </div>
 
-                <div className="mt-3 flex justify-between text-sm text-slate-500">
-                  <span>
-                    {p.region} · 마감 {p.endDate || '상시'}
-                  </span>
-                  <Link
-                    href={`/program/${p.id}`}
-                    className="font-medium text-blue-600 hover:underline"
-                  >
-                    자세히 보기 →
-                  </Link>
-                </div>
-              </article>
-            ))}
+                  <div className="mt-4 flex justify-between text-sm">
+                    <span>
+                      {p.region} · {p.field}
+                    </span>
+                    <Link
+                      href={`/program/${p.id}`}
+                      className="text-blue-600 font-medium"
+                    >
+                      상세보기 →
+                    </Link>
+                  </div>
+                </article>
+              )
+            })
+          )}
 
-          {/* 페이지네이션 */}
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onChange={setPage}
-          />
+          {/* PAGINATION */}
+          <div className="flex justify-center gap-3 pt-10">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage(p => p - 1)}
+              className="px-4 py-2 border rounded disabled:opacity-30"
+            >
+              이전
+            </button>
+            <span className="px-4 py-2">Page {page}</span>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              className="px-4 py-2 border rounded"
+            >
+              다음
+            </button>
+          </div>
         </section>
       </div>
     </main>
   )
 }
 
-/* =======================
-   Pagination
-======================= */
-function Pagination({
-  page,
-  totalPages,
-  onChange,
+/* ---------------- components ---------------- */
+
+function Filter({
+  title,
+  children,
 }: {
-  page: number
-  totalPages: number
-  onChange: (p: number) => void
+  title: string
+  children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center gap-4 pt-6">
-      <div className="flex gap-2">
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-          (p) => (
-            <button
-              key={p}
-              onClick={() => onChange(p)}
-              className={`h-9 w-9 rounded-lg text-sm font-medium ${
-                p === page
-                  ? 'bg-blue-600 text-white'
-                  : 'border bg-white hover:bg-slate-100'
-              }`}
-            >
-              {p}
-            </button>
-          ),
-        )}
-      </div>
-
-      <div className="flex items-center gap-2 text-sm">
-        <span>페이지 이동</span>
-        <input
-          type="number"
-          min={1}
-          max={totalPages}
-          className="w-20 rounded-lg border px-2 py-1 text-center"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              const v = Number(
-                (e.target as HTMLInputElement).value,
-              )
-              if (v >= 1 && v <= totalPages) onChange(v)
-            }
-          }}
-        />
-        <span>/ {totalPages}</span>
-      </div>
+    <div className="bg-white border rounded-xl p-4">
+      <h3 className="font-semibold mb-2">{title}</h3>
+      {children}
     </div>
+  )
+}
+
+function Select({
+  value,
+  onChange,
+  children,
+}: {
+  value: string
+  onChange: (v: string) => void
+  children: React.ReactNode
+}) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-full border rounded px-3 py-2"
+    >
+      {children}
+    </select>
   )
 }
