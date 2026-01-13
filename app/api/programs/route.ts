@@ -16,15 +16,12 @@ function getStatus(endDate?: string): '신청가능' | '마감' {
 
 export async function GET(req: Request) {
   if (!SERVICE_KEY) {
-    return NextResponse.json(
-      { error: 'SERVICE_KEY missing' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'SERVICE_KEY missing' }, { status: 500 })
   }
 
   const { searchParams } = new URL(req.url)
+  const id = searchParams.get('id')
 
-  const id = searchParams.get('id')               // ⭐ 핵심
   const page = Number(searchParams.get('page') ?? 1)
   const perPage = Number(searchParams.get('perPage') ?? 10)
   const region = searchParams.get('region')
@@ -33,15 +30,10 @@ export async function GET(req: Request) {
   const sort = searchParams.get('sort') ?? 'deadline'
 
   try {
-    /* 1️⃣ 공공 API에서 넉넉히 가져오기 */
     const res = await fetch(
       `${BASE_URL}?page=1&perPage=1000&returnType=JSON&serviceKey=${SERVICE_KEY}`,
-      { cache: 'no-store' },
+      { cache: 'no-store' }
     )
-
-    if (!res.ok) {
-      throw new Error('Public API error')
-    }
 
     const json = await res.json()
 
@@ -52,10 +44,10 @@ export async function GET(req: Request) {
       return {
         id: String(item.번호),
         title: item.사업명,
-        agency: item.소관기관,
-        region,
         field: item.분야,
+        agency: item.소관기관,
         executor: item.수행기관,
+        region,
         startDate: item.신청시작일자,
         endDate,
         status: getStatus(endDate),
@@ -64,30 +56,21 @@ export async function GET(req: Request) {
       }
     })
 
-    /* ===============================
-       ⭐ 2️⃣ id 단건 조회 (상세 페이지용)
-       =============================== */
+    /* ✅ 단건 조회 */
     if (id) {
-      const found = programs.find(
-        (p) => String(p.id) === String(id),
-      )
-
-      return NextResponse.json({
-        program: found ?? null,
-      })
+      const program = programs.find((p) => p.id === id)
+      return NextResponse.json({ program: program ?? null })
     }
 
-    /* 3️⃣ 검색 */
+    /* 검색 */
     if (keyword) {
-      programs = programs.filter((p) =>
-        p.title.includes(keyword),
-      )
+      programs = programs.filter((p) => p.title.includes(keyword))
     }
 
-    /* 4️⃣ 필터 */
+    /* 필터 */
     if (region) {
       programs = programs.filter(
-        (p) => p.region === region || p.region === '전국',
+        (p) => p.region === region || p.region === '전국'
       )
     }
 
@@ -95,12 +78,12 @@ export async function GET(req: Request) {
       programs = programs.filter((p) => p.status === status)
     }
 
-    /* 5️⃣ 정렬 */
+    /* 정렬 */
     if (sort === 'deadline') {
       programs.sort(
         (a, b) =>
           new Date(a.endDate ?? '9999').getTime() -
-          new Date(b.endDate ?? '9999').getTime(),
+          new Date(b.endDate ?? '9999').getTime()
       )
     }
 
@@ -108,11 +91,11 @@ export async function GET(req: Request) {
       programs.sort(
         (a, b) =>
           new Date(b.registeredAt ?? '').getTime() -
-          new Date(a.registeredAt ?? '').getTime(),
+          new Date(a.registeredAt ?? '').getTime()
       )
     }
 
-    /* 6️⃣ 페이지네이션 */
+    /* 페이지네이션 */
     const totalCount = programs.length
     const totalPages = Math.ceil(totalCount / perPage)
     const start = (page - 1) * perPage
@@ -127,9 +110,6 @@ export async function GET(req: Request) {
     })
   } catch (e) {
     console.error(e)
-    return NextResponse.json(
-      { error: 'API fetch failed' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'API fetch failed' }, { status: 500 })
   }
 }
