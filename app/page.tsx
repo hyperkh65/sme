@@ -126,7 +126,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {/* 🔥 메인 리스트 상단 광고 (자동 반응형) */}
+            {/* 🔥 리스트 상단 광고 (자동 반응형) */}
             <AdSense slot="5158151469" />
 
             {loading ? (
@@ -135,45 +135,29 @@ export default function HomePage() {
               </p>
             ) : (
               <div className="space-y-4">
-                {programs.map((p, idx) => {
+                {programs.map(p => {
                   const d = dday(p.endDate)
 
                   return (
-                    <div key={p.id}>
-                      <Link
-                        href={`/program/${p.id}`}
-                        className="block bg-white border rounded-xl p-6 hover:shadow-md transition"
-                      >
-                        <div className="flex justify-between">
-                          <div>
-                            <h3 className="font-semibold text-lg">
-                              {p.title}
-                            </h3>
-                            <p className="text-sm text-slate-500 mt-1">
-                              {p.agency} · {p.region}
-                            </p>
-                          </div>
-                          <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-                            {d !== null ? `D-${d}` : p.status}
-                          </span>
+                    <Link
+                      key={p.id}
+                      href={`/program/${p.id}`}
+                      className="block bg-white border rounded-xl p-6 hover:shadow-md transition"
+                    >
+                      <div className="flex justify-between gap-4">
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {p.title}
+                          </h3>
+                          <p className="text-sm text-slate-500 mt-1">
+                            {p.agency} · {p.region}
+                          </p>
                         </div>
-                      </Link>
-
-                      {/* 🔥 리스트 중간 광고 */}
-                      {idx === 2 && (
-                        <div className="my-6">
-                          <AdSense
-                            slot="4966757696"
-                            style={{
-                              display: 'inline-block',
-                              width: '970px',
-                              height: '250px',
-                            }}
-                            responsive={false}
-                          />
-                        </div>
-                      )}
-                    </div>
+                        <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+                          {d !== null ? `D-${d}` : p.status}
+                        </span>
+                      </div>
+                    </Link>
                   )
                 })}
               </div>
@@ -194,7 +178,7 @@ export default function HomePage() {
                 </ul>
               </div>
 
-              {/* 🔥 사이드바 300x250 */}
+              {/* 🔥 오른쪽 사이드바 광고 (300x250) */}
               <div className="bg-white border rounded-xl p-4">
                 <div className="text-xs text-slate-400 mb-2">
                   ADVERTISEMENT
@@ -212,6 +196,26 @@ export default function HomePage() {
             </div>
           </aside>
         </section>
+
+        {/* ===== PAGE BOTTOM AD ===== */}
+        <div className="max-w-7xl mx-auto px-6 pb-16">
+          <div className="bg-white border rounded-xl p-4">
+            <div className="text-xs text-slate-400 mb-2">
+              ADVERTISEMENT
+            </div>
+
+            {/* 🔥 페이지 하단 대형 광고 */}
+            <AdSense
+              slot="4966757696"
+              style={{
+                display: 'inline-block',
+                width: '970px',
+                height: '250px',
+              }}
+              responsive={false}
+            />
+          </div>
+        </div>
       </main>
     </>
   )
