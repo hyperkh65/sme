@@ -74,6 +74,18 @@ export default function ProgramDetailPage() {
           ← 목록으로 돌아가기
         </Link>
 
+        {/* ✅ 광고 1: 상단 본문 전 */}
+        <div className="my-6 text-center">
+          <ins
+            className="adsbygoogle"
+            style={{ display: 'block' }}
+            data-ad-client="ca-pub-8940400388075870"
+            data-ad-slot="5158151469"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          />
+        </div>
+
         <div className="mt-6 bg-white border rounded-2xl p-8">
           {/* HEADER */}
           <div className="flex justify-between gap-6">
@@ -122,6 +134,16 @@ export default function ProgramDetailPage() {
               </a>
             </div>
           )}
+        </div>
+
+        {/* ✅ 광고 2: 하단 CTA 뒤 (RPM 좋음) */}
+        <div className="mt-10 text-center">
+          <ins
+            className="adsbygoogle"
+            style={{ display: 'inline-block', width: 970, height: 90 }}
+            data-ad-client="ca-pub-8940400388075870"
+            data-ad-slot="1739739148"
+          />
         </div>
       </div>
     </main>
