@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
 /* =========================
-   타입
+   타입1
 ========================= */
 type Program = {
   id: string
