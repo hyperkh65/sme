@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 type Program = {
   id: string
   title: string
   agency: string
   region: string
+  field?: string
   endDate?: string
   status: '신청가능' | '마감'
 }
@@ -21,13 +22,16 @@ function dday(endDate?: string) {
 }
 
 export default function HomePage() {
-  const [q, setQ] = useState('')
   const [programs, setPrograms] = useState<Program[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  // 메인 검색 필터 상태
+  const [q, setQ] = useState('')
+  const [region, setRegion] = useState('')
+  const [field, setField] = useState('')
 
   useEffect(() => {
-    setLoading(true)
-    fetch('/api/programs?page=1&perPage=5&sort=deadline')
+    fetch('/api/programs?page=1&perPage=6&sort=deadline')
       .then(res => res.json())
       .then(data => {
         setPrograms(data.programs || [])
@@ -36,43 +40,72 @@ export default function HomePage() {
   }, [])
 
   return (
-    <main className="bg-slate-50 min-h-screen">
-      {/* HERO */}
-      <section className="bg-blue-600 text-white">
+    <main className="min-h-screen bg-slate-50">
+      {/* ===== HERO / SEARCH ===== */}
+      <section className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
         <div className="max-w-7xl mx-auto px-6 py-16">
-          <h1 className="text-3xl md:text-4xl font-bold">
+          <h1 className="text-3xl md:text-4xl font-bold leading-tight">
             중소기업 지원사업 통합 포털
           </h1>
           <p className="mt-4 text-blue-100 max-w-2xl">
-            흩어진 정부·지자체 지원사업을 한 곳에서 검색하고,
-            지금 신청 가능한 사업만 확인하세요.
+            정부·지자체 지원사업을 한 번에 검색하고,
+            지금 신청 가능한 공고만 확인하세요.
           </p>
 
-          {/* SEARCH BAR */}
+          {/* SEARCH FORM */}
           <form
             action="/search"
             method="GET"
-            className="mt-8 flex max-w-3xl bg-white rounded-xl overflow-hidden shadow"
+            className="mt-8 bg-white rounded-2xl shadow-lg p-6 grid gap-4 md:grid-cols-6"
           >
             <input
               name="q"
               value={q}
               onChange={e => setQ(e.target.value)}
-              placeholder="지원사업명, 기관명으로 검색"
-              className="flex-1 px-5 py-4 text-slate-900 outline-none"
+              placeholder="지원사업명, 기관명 검색"
+              className="md:col-span-2 border rounded-lg px-4 py-3 text-slate-900"
             />
+
+            <select
+              name="region"
+              value={region}
+              onChange={e => setRegion(e.target.value)}
+              className="border rounded-lg px-3 py-3 text-slate-900"
+            >
+              <option value="">전체 지역</option>
+              <option value="서울">서울</option>
+              <option value="경기">경기</option>
+              <option value="부산">부산</option>
+              <option value="대구">대구</option>
+            </select>
+
+            <select
+              name="field"
+              value={field}
+              onChange={e => setField(e.target.value)}
+              className="border rounded-lg px-3 py-3 text-slate-900"
+            >
+              <option value="">전체 분야</option>
+              <option value="경영">경영</option>
+              <option value="기술">기술</option>
+              <option value="금융">금융</option>
+              <option value="수출">수출</option>
+            </select>
+
+            <input type="hidden" name="sort" value="deadline" />
+
             <button
               type="submit"
-              className="bg-blue-700 px-8 font-semibold"
+              className="md:col-span-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold"
             >
-              검색
+              지원사업 검색
             </button>
           </form>
         </div>
       </section>
 
-      {/* CONTENT */}
-      <section className="max-w-7xl mx-auto px-6 py-14 grid lg:grid-cols-4 gap-10">
+      {/* ===== CONTENT ===== */}
+      <section className="max-w-7xl mx-auto px-6 py-14 grid gap-10 lg:grid-cols-4">
         {/* MAIN LIST */}
         <div className="lg:col-span-3">
           <div className="flex justify-between items-center mb-6">
@@ -104,7 +137,7 @@ export default function HomePage() {
                   >
                     <div className="flex justify-between gap-4">
                       <div>
-                        <h3 className="font-semibold text-lg">
+                        <h3 className="font-semibold text-lg text-slate-900">
                           {p.title}
                         </h3>
                         <p className="text-sm text-slate-500 mt-1">
@@ -139,9 +172,9 @@ export default function HomePage() {
                 이런 분께 추천합니다
               </h3>
               <ul className="text-sm text-slate-600 space-y-2">
-                <li>• 정책자금 놓치기 싫은 대표님</li>
+                <li>• 정책자금·지원금 놓치기 싫은 대표님</li>
                 <li>• 창업 초기 자금이 필요한 분</li>
-                <li>• 지자체 지원사업 찾는 기업</li>
+                <li>• 지자체 지원사업을 찾는 기업</li>
               </ul>
             </div>
 
