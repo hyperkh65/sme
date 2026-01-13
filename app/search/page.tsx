@@ -20,6 +20,35 @@ function dday(endDate?: string) {
   return Math.ceil(diff / 86400000)
 }
 
+/** ✅ 광고 컴포넌트 (중복 방지용) */
+function AdBlock({
+  slot,
+  style,
+}: {
+  slot: string
+  style?: React.CSSProperties
+}) {
+  useEffect(() => {
+    try {
+      // @ts-ignore
+      ;(window.adsbygoogle = window.adsbygoogle || []).push({})
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
+  return (
+    <ins
+      className="adsbygoogle"
+      style={style ?? { display: 'block', width: '100%' }}
+      data-ad-client="ca-pub-8940400388075870"
+      data-ad-slot={slot}
+      data-ad-format="auto"
+      data-full-width-responsive="true"
+    />
+  )
+}
+
 export default function SearchPage() {
   const [programs, setPrograms] = useState<Program[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,7 +83,6 @@ export default function SearchPage() {
             정부·지자체 지원사업을 한 곳에서 검색하세요.
           </p>
 
-          {/* SEARCH BAR */}
           <div className="mt-6 flex gap-3">
             <input
               placeholder="사업명 검색"
@@ -72,7 +100,6 @@ export default function SearchPage() {
         </div>
       </header>
 
-      {/* CONTENT */}
       <div className="max-w-7xl mx-auto px-6 py-12 grid gap-10 lg:grid-cols-4">
         {/* FILTER */}
         <aside className="lg:col-span-1">
@@ -102,54 +129,63 @@ export default function SearchPage() {
         </aside>
 
         {/* LIST */}
-        <section className="lg:col-span-3 space-y-6">
+        <section className="lg:col-span-2 space-y-6">
           {loading ? (
             <p className="text-center py-40 text-slate-500">
               불러오는 중…
             </p>
           ) : (
-            programs.map((p) => {
+            programs.map((p, idx) => {
               const d = dday(p.endDate)
 
               return (
-                <article
-                  key={p.id}
-                  className="rounded-2xl border bg-white p-6 hover:shadow-md transition"
-                >
-                  <div className="flex justify-between gap-4">
-                    <div>
-                      <h2 className="text-lg font-semibold">
-                        {p.title}
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {p.agency}
-                      </p>
+                <div key={p.id}>
+                  {/* ✅ 인피드 광고 (4번째마다) */}
+                  {idx > 0 && idx % 4 === 0 && (
+                    <div className="my-6 rounded-xl border bg-white p-4">
+                      <div className="text-xs text-slate-400 mb-2">
+                        ADVERTISEMENT
+                      </div>
+                      <AdBlock slot="5158151469" />
+                    </div>
+                  )}
+
+                  <article className="rounded-2xl border bg-white p-6 hover:shadow-md transition">
+                    <div className="flex justify-between gap-4">
+                      <div>
+                        <h2 className="text-lg font-semibold">
+                          {p.title}
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {p.agency}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`h-fit rounded-full px-4 py-1.5 text-xs font-semibold ${
+                          p.status === '신청가능'
+                            ? d !== null && d <= 3
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-green-100 text-green-700'
+                            : 'bg-slate-200 text-slate-600'
+                        }`}
+                      >
+                        {p.status}
+                        {d !== null && ` · D-${d}`}
+                      </span>
                     </div>
 
-                    <span
-                      className={`h-fit rounded-full px-4 py-1.5 text-xs font-semibold ${
-                        p.status === '신청가능'
-                          ? d !== null && d <= 3
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-green-100 text-green-700'
-                          : 'bg-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {p.status}
-                      {d !== null && ` · D-${d}`}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex justify-between text-sm text-slate-500">
-                    <span>지역: {p.region}</span>
-                    <Link
-                      href={`/program/${p.id}`}
-                      className="text-blue-600 font-medium hover:underline"
-                    >
-                      상세보기 →
-                    </Link>
-                  </div>
-                </article>
+                    <div className="mt-4 flex justify-between text-sm text-slate-500">
+                      <span>지역: {p.region}</span>
+                      <Link
+                        href={`/program/${p.id}`}
+                        className="text-blue-600 font-medium hover:underline"
+                      >
+                        상세보기 →
+                      </Link>
+                    </div>
+                  </article>
+                </div>
               )
             })
           )}
@@ -172,6 +208,16 @@ export default function SearchPage() {
             </button>
           </div>
         </section>
+
+        {/* ✅ 사이드바 광고 (고정) */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-24 bg-white border rounded-xl p-4">
+            <div className="text-xs text-slate-400 mb-2">
+              ADVERTISEMENT
+            </div>
+            <AdBlock slot="1739739148" />
+          </div>
+        </aside>
       </div>
     </main>
   )
