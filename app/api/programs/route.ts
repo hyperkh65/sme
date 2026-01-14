@@ -38,9 +38,11 @@ function calcDday(endDate?: string) {
   )
 }
 
-function getStatus(dday: number | null): '신청가능' | '마감' {
-  if (dday === null) return '신청가능'
-  return dday >= 0 ? '신청가능' : '마감'
+function getStatus(
+  rawDday: number | null,
+): '신청가능' | '마감' {
+  if (rawDday === null) return '신청가능'
+  return rawDday >= 0 ? '신청가능' : '마감'
 }
 
 /* ======================
@@ -78,7 +80,12 @@ export async function GET(req: Request) {
       const regionRaw = title + (item.지역 ?? '')
       const region = normalizeRegion(regionRaw)
       const endDate = item.신청종료일자
-      const dday = calcDday(endDate)
+
+      // ✅ 1. dday 계산 (내부용)
+      const rawDday = calcDday(endDate)
+
+      // ✅ 2. 상태 결정
+      const status = getStatus(rawDday)
 
       return {
         id: String(item.번호),
@@ -89,14 +96,18 @@ export async function GET(req: Request) {
         region,
         startDate: item.신청시작일자,
         endDate,
-        dday,
-        status: getStatus(dday),
+
+        // 🔥 핵심 수정 부분
+        // 마감이면 dday는 null
+        dday: status === '신청가능' ? rawDday : null,
+
+        status,
         registeredAt: item.등록일자,
         url: item.사업공고URL,
       }
     })
 
-    /* ===== 단건 조회 (/program/[id]) ===== */
+    /* ===== 단건 조회 ===== */
     if (id) {
       const program = programs.find((p) => p.id === id)
       return NextResponse.json({ program: program ?? null })
@@ -104,9 +115,10 @@ export async function GET(req: Request) {
 
     /* ===== 검색 ===== */
     if (keyword) {
-      programs = programs.filter((p) =>
-        p.title.includes(keyword) ||
-        p.agency?.includes(keyword),
+      programs = programs.filter(
+        (p) =>
+          p.title.includes(keyword) ||
+          p.agency?.includes(keyword),
       )
     }
 
@@ -121,10 +133,12 @@ export async function GET(req: Request) {
 
     /* ===== 정렬 ===== */
     if (sort === 'deadline') {
-      programs.sort(
-        (a, b) =>
-          (a.dday ?? 9999) - (b.dday ?? 9999),
-      )
+      programs.sort((a, b) => {
+        // 신청가능 먼저
+        if (a.status === '마감' && b.status !== '마감') return 1
+        if (a.status !== '마감' && b.status === '마감') return -1
+        return (a.dday ?? 9999) - (b.dday ?? 9999)
+      })
     }
 
     if (sort === 'latest') {
