@@ -8,7 +8,7 @@ const BASE_URL =
   'https://api.odcloud.kr/api/3034791/v1/uddi:fa09d13d-bce8-474e-b214-8008e79ec08f'
 
 /* ======================
-   유틸 함수
+   유틸
 ====================== */
 
 function normalizeRegion(raw?: string) {
@@ -24,8 +24,13 @@ function normalizeRegion(raw?: string) {
   return '기타'
 }
 
-function calcDday(endDate?: string) {
-  if (!endDate) return null
+/**
+ * status 판단 전용
+ * - endDate가 오늘 이전이면 마감
+ * - 오늘 포함 이후면 신청가능
+ */
+function getStatus(endDate?: string): '신청가능' | '마감' {
+  if (!endDate) return '신청가능'
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -33,16 +38,9 @@ function calcDday(endDate?: string) {
   const end = new Date(endDate)
   end.setHours(0, 0, 0, 0)
 
-  return Math.ceil(
-    (end.getTime() - today.getTime()) / 86400000,
-  )
-}
-
-function getStatus(
-  rawDday: number | null,
-): '신청가능' | '마감' {
-  if (rawDday === null) return '신청가능'
-  return rawDday >= 0 ? '신청가능' : '마감'
+  return end.getTime() < today.getTime()
+    ? '마감'
+    : '신청가능'
 }
 
 /* ======================
@@ -81,11 +79,7 @@ export async function GET(req: Request) {
       const region = normalizeRegion(regionRaw)
       const endDate = item.신청종료일자
 
-      // ✅ 1. dday 계산 (내부용)
-      const rawDday = calcDday(endDate)
-
-      // ✅ 2. 상태 결정
-      const status = getStatus(rawDday)
+      const status = getStatus(endDate)
 
       return {
         id: String(item.번호),
@@ -96,11 +90,6 @@ export async function GET(req: Request) {
         region,
         startDate: item.신청시작일자,
         endDate,
-
-        // 🔥 핵심 수정 부분
-        // 마감이면 dday는 null
-        dday: status === '신청가능' ? rawDday : null,
-
         status,
         registeredAt: item.등록일자,
         url: item.사업공고URL,
@@ -133,11 +122,15 @@ export async function GET(req: Request) {
 
     /* ===== 정렬 ===== */
     if (sort === 'deadline') {
+      // 신청가능 먼저, 마감은 뒤로
       programs.sort((a, b) => {
-        // 신청가능 먼저
         if (a.status === '마감' && b.status !== '마감') return 1
         if (a.status !== '마감' && b.status === '마감') return -1
-        return (a.dday ?? 9999) - (b.dday ?? 9999)
+
+        return (
+          new Date(a.endDate ?? '').getTime() -
+          new Date(b.endDate ?? '').getTime()
+        )
       })
     }
 
